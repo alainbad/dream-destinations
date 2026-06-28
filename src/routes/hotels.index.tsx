@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Star, MapPin } from "lucide-react";
 import { hotels } from "@/lib/mock-data";
 
-export const Route = createFileRoute("/hotels")({
+export const Route = createFileRoute("/hotels/")({
   head: () => ({ meta: [{ title: "Hotels — TravelHub" }, { name: "description", content: "Browse luxury hotels worldwide." }] }),
   component: HotelsPage,
 });
