@@ -64,6 +64,27 @@ function Hero() {
 }
 
 function SearchWidget() {
+  const navigate = useNavigate();
+  // Hotels
+  const [destination, setDestination] = useState("Dubai");
+  const [checkIn, setCheckIn] = useState("");
+  const [checkOut, setCheckOut] = useState("");
+  const [guests, setGuests] = useState(2);
+  // Flights
+  const [from, setFrom] = useState("DXB");
+  const [to, setTo] = useState("CDG");
+  const [departure, setDeparture] = useState("");
+  const [returnDate, setReturnDate] = useState("");
+  const [travelers, setTravelers] = useState(1);
+  const [cabin, setCabin] = useState<"economy" | "premium" | "business" | "first">("economy");
+
+  const searchHotels = () => {
+    navigate({ to: "/hotels", search: { destination, checkIn, checkOut, guests } });
+  };
+  const searchFlights = () => {
+    navigate({ to: "/flights", search: { from, to, departure, returnDate, travelers, cabin, trip: "round" } });
+  };
+
   return (
     <div className="bg-white rounded-2xl shadow-elevated p-2">
       <Tabs defaultValue="hotels">
@@ -79,42 +100,42 @@ function SearchWidget() {
         <TabsContent value="hotels" className="p-4 pt-5">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
             <Field label="Destination" icon={<MapPin className="w-4 h-4" />} className="md:col-span-4">
-              <Input placeholder="Where are you going?" className="border-0 px-0 shadow-none focus-visible:ring-0" defaultValue="Dubai, UAE" />
+              <Input placeholder="Where are you going?" className="border-0 px-0 shadow-none focus-visible:ring-0" value={destination} onChange={(e) => setDestination(e.target.value)} />
             </Field>
             <Field label="Check-in" icon={<Calendar className="w-4 h-4" />} className="md:col-span-3">
-              <Input type="date" className="border-0 px-0 shadow-none focus-visible:ring-0" />
+              <Input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} className="border-0 px-0 shadow-none focus-visible:ring-0" />
             </Field>
             <Field label="Check-out" icon={<Calendar className="w-4 h-4" />} className="md:col-span-3">
-              <Input type="date" className="border-0 px-0 shadow-none focus-visible:ring-0" />
+              <Input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} className="border-0 px-0 shadow-none focus-visible:ring-0" />
             </Field>
             <Field label="Guests" icon={<Users className="w-4 h-4" />} className="md:col-span-2">
-              <Input type="number" min={1} defaultValue={2} className="border-0 px-0 shadow-none focus-visible:ring-0" />
+              <Input type="number" min={1} value={guests} onChange={(e) => setGuests(Math.max(1, parseInt(e.target.value) || 1))} className="border-0 px-0 shadow-none focus-visible:ring-0" />
             </Field>
           </div>
-          <Button asChild className="w-full mt-4 h-12 bg-gradient-cta text-white border-0 text-base font-semibold shadow-glow hover:opacity-90">
-            <Link to="/hotels"><Search className="w-4 h-4 mr-2" /> Search Hotels</Link>
+          <Button onClick={searchHotels} className="w-full mt-4 h-12 bg-gradient-cta text-white border-0 text-base font-semibold shadow-glow hover:opacity-90">
+            <Search className="w-4 h-4 mr-2" /> Search Hotels
           </Button>
         </TabsContent>
 
         <TabsContent value="flights" className="p-4 pt-5">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
             <Field label="From" icon={<Plane className="w-4 h-4 -rotate-45" />} className="md:col-span-3">
-              <Input placeholder="Origin" defaultValue="Dubai (DXB)" className="border-0 px-0 shadow-none focus-visible:ring-0" />
+              <Input placeholder="Origin" value={from} onChange={(e) => setFrom(e.target.value)} className="border-0 px-0 shadow-none focus-visible:ring-0" />
             </Field>
             <Field label="To" icon={<Plane className="w-4 h-4 rotate-45" />} className="md:col-span-3">
-              <Input placeholder="Destination" defaultValue="Paris (CDG)" className="border-0 px-0 shadow-none focus-visible:ring-0" />
+              <Input placeholder="Destination" value={to} onChange={(e) => setTo(e.target.value)} className="border-0 px-0 shadow-none focus-visible:ring-0" />
             </Field>
             <Field label="Departure" icon={<Calendar className="w-4 h-4" />} className="md:col-span-2">
-              <Input type="date" className="border-0 px-0 shadow-none focus-visible:ring-0" />
+              <Input type="date" value={departure} onChange={(e) => setDeparture(e.target.value)} className="border-0 px-0 shadow-none focus-visible:ring-0" />
             </Field>
             <Field label="Return" icon={<Calendar className="w-4 h-4" />} className="md:col-span-2">
-              <Input type="date" className="border-0 px-0 shadow-none focus-visible:ring-0" />
+              <Input type="date" value={returnDate} onChange={(e) => setReturnDate(e.target.value)} className="border-0 px-0 shadow-none focus-visible:ring-0" />
             </Field>
             <Field label="Travelers" icon={<Users className="w-4 h-4" />} className="md:col-span-1">
-              <Input type="number" min={1} defaultValue={1} className="border-0 px-0 shadow-none focus-visible:ring-0" />
+              <Input type="number" min={1} value={travelers} onChange={(e) => setTravelers(Math.max(1, parseInt(e.target.value) || 1))} className="border-0 px-0 shadow-none focus-visible:ring-0" />
             </Field>
             <Field label="Cabin" className="md:col-span-1">
-              <Select defaultValue="economy">
+              <Select value={cabin} onValueChange={(v) => setCabin(v as typeof cabin)}>
                 <SelectTrigger className="border-0 px-0 shadow-none focus:ring-0 h-auto"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="economy">Economy</SelectItem>
@@ -125,8 +146,8 @@ function SearchWidget() {
               </Select>
             </Field>
           </div>
-          <Button asChild className="w-full mt-4 h-12 bg-gradient-cta text-white border-0 text-base font-semibold shadow-glow hover:opacity-90">
-            <Link to="/flights"><Search className="w-4 h-4 mr-2" /> Search Flights</Link>
+          <Button onClick={searchFlights} className="w-full mt-4 h-12 bg-gradient-cta text-white border-0 text-base font-semibold shadow-glow hover:opacity-90">
+            <Search className="w-4 h-4 mr-2" /> Search Flights
           </Button>
         </TabsContent>
       </Tabs>
