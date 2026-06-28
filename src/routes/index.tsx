@@ -178,7 +178,7 @@ function FeaturedDestinations() {
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
         {destinations.map((d) => (
-          <Link key={d.city} to="/hotels" className="group relative rounded-2xl overflow-hidden aspect-[3/4] hover-zoom shadow-card">
+          <Link key={d.city} to="/hotels" search={{ destination: d.city, checkIn: "", checkOut: "", guests: 2 }} className="group relative rounded-2xl overflow-hidden aspect-[3/4] hover-zoom shadow-card">
             <img src={d.img} alt={d.city} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
             <div className="absolute bottom-0 inset-x-0 p-5 text-white">
