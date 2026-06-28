@@ -1,5 +1,7 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z } from "zod";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -7,7 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Star, MapPin, Wifi, Waves, Sparkles, Dumbbell, UtensilsCrossed, Users, BedDouble, Maximize2 } from "lucide-react";
 import { hotels, rooms } from "@/lib/mock-data";
 
+const searchSchema = z.object({
+  checkIn: fallback(z.string(), "").default(""),
+  checkOut: fallback(z.string(), "").default(""),
+  guests: fallback(z.number().int().min(1), 2).default(2),
+});
+
 export const Route = createFileRoute("/hotels/$id")({
+  validateSearch: zodValidator(searchSchema),
   component: HotelDetail,
   notFoundComponent: () => <div className="p-20 text-center">Hotel not found.</div>,
 });
@@ -16,12 +25,33 @@ const amenityIcons: Record<string, any> = {
   WiFi: Wifi, Pool: Waves, Spa: Sparkles, Gym: Dumbbell, Restaurant: UtensilsCrossed,
 };
 
+function nightsBetween(a: string, b: string): number {
+  if (!a || !b) return 3;
+  const d1 = new Date(a).getTime();
+  const d2 = new Date(b).getTime();
+  if (isNaN(d1) || isNaN(d2) || d2 <= d1) return 3;
+  return Math.max(1, Math.round((d2 - d1) / 86400000));
+}
+
 function HotelDetail() {
   const { id } = Route.useParams();
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: "/hotels/$id" });
   const hotel = hotels.find((h) => h.id === id);
   const [mainImg, setMainImg] = useState(hotel?.gallery[0] || "");
+  const [checkIn, setCheckIn] = useState(search.checkIn);
+  const [checkOut, setCheckOut] = useState(search.checkOut);
+  const [guests, setGuests] = useState(search.guests);
 
   if (!hotel) throw notFound();
+
+  const nights = useMemo(() => nightsBetween(checkIn, checkOut), [checkIn, checkOut]);
+  const subtotal = hotel.price * nights;
+  const taxes = Math.round(subtotal * 0.12);
+
+  const goCheckout = (roomName?: string) => {
+    navigate({ to: "/checkout", search: { type: "hotel", hotelId: hotel.id, checkIn, checkOut, guests, room: roomName } as any });
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -102,7 +132,7 @@ function HotelDetail() {
                         <div className="font-bold text-2xl text-primary">${r.price}</div>
                         <div className="text-xs text-muted-foreground">per night</div>
                       </div>
-                      <Button asChild className="bg-gradient-cta text-white border-0"><Link to="/checkout">Book Now</Link></Button>
+                      <Button onClick={() => goCheckout(r.name)} className="bg-gradient-cta text-white border-0">Book Now</Button>
                     </div>
                   </div>
                 ))}
@@ -140,20 +170,20 @@ function HotelDetail() {
               <span className="text-sm text-muted-foreground">/ night</span>
             </div>
             <div className="grid grid-cols-2 gap-2 mb-3">
-              <Field label="Check-in"><Input type="date" className="border-0 p-0 h-auto shadow-none focus-visible:ring-0" /></Field>
-              <Field label="Check-out"><Input type="date" className="border-0 p-0 h-auto shadow-none focus-visible:ring-0" /></Field>
+              <Field label="Check-in"><Input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} className="border-0 p-0 h-auto shadow-none focus-visible:ring-0" /></Field>
+              <Field label="Check-out"><Input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} className="border-0 p-0 h-auto shadow-none focus-visible:ring-0" /></Field>
             </div>
-            <Field label="Guests"><Input type="number" defaultValue={2} min={1} className="border-0 p-0 h-auto shadow-none focus-visible:ring-0" /></Field>
+            <Field label="Guests"><Input type="number" value={guests} onChange={(e) => setGuests(Math.max(1, parseInt(e.target.value) || 1))} min={1} className="border-0 p-0 h-auto shadow-none focus-visible:ring-0" /></Field>
             <div className="mt-5 space-y-2 pb-4 border-b border-border">
-              <Row label={`$${hotel.price} × 3 nights`} value={`$${hotel.price * 3}`} />
-              <Row label="Taxes & fees" value={`$${Math.round(hotel.price * 3 * 0.12)}`} />
+              <Row label={`$${hotel.price} × ${nights} night${nights > 1 ? "s" : ""}`} value={`$${subtotal.toLocaleString()}`} />
+              <Row label="Taxes & fees" value={`$${taxes.toLocaleString()}`} />
             </div>
             <div className="flex justify-between font-bold text-lg mt-4">
               <span>Total</span>
-              <span>${hotel.price * 3 + Math.round(hotel.price * 3 * 0.12)}</span>
+              <span>${(subtotal + taxes).toLocaleString()}</span>
             </div>
-            <Button asChild className="w-full mt-5 h-12 bg-gradient-cta text-white border-0 text-base font-semibold shadow-glow">
-              <Link to="/checkout">Reserve</Link>
+            <Button onClick={() => goCheckout()} className="w-full mt-5 h-12 bg-gradient-cta text-white border-0 text-base font-semibold shadow-glow">
+              Reserve
             </Button>
             <p className="text-xs text-center text-muted-foreground mt-3">Free cancellation until 48h before check-in</p>
           </aside>
