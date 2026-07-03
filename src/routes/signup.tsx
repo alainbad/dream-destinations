@@ -29,7 +29,6 @@ function Signup() {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`,
         data: { first_name: first, last_name: last },
       },
     });
