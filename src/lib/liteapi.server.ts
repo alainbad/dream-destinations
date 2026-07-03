@@ -142,12 +142,20 @@ export async function getHotel(hotelId: string) {
 
 export type LiteRateHotel = {
   hotelId: string;
+  rooms?: Array<{
+    id?: number;
+    roomName?: string;
+    description?: string;
+    maxOccupancy?: number;
+    photos?: Array<{ url?: string; failoverPhoto?: string; mainPhoto?: boolean }>;
+  }>;
   roomTypes?: Array<{
     offerId: string;
     rates?: Array<{
       name?: string;
       maxOccupancy?: number;
       boardName?: string;
+      mappedRoomId?: number;
       retailRate?: { total?: Array<{ amount: number; currency: string }> };
     }>;
   }>;
