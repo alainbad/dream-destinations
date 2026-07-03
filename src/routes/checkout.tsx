@@ -83,7 +83,7 @@ function Checkout() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!signedIn) {
       toast.error("Please sign in to complete your booking.");
