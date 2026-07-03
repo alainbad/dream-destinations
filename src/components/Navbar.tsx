@@ -1,12 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { Plane, Menu, X } from "lucide-react";
+import { BedDouble, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
 const links = [
   { to: "/", label: "Home" },
   { to: "/hotels", label: "Hotels" },
-  { to: "/flights", label: "Flights" },
   { to: "/ai-trip-planner", label: "AI Planner" },
   { to: "/dashboard", label: "Dashboard" },
 ];
@@ -18,9 +17,9 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2 text-white">
           <div className="w-9 h-9 rounded-lg bg-gradient-cta flex items-center justify-center shadow-glow">
-            <Plane className="w-5 h-5 text-white" />
+            <BedDouble className="w-5 h-5 text-white" />
           </div>
-          <span className="font-display text-xl font-bold tracking-tight">TravelHub</span>
+          <span className="font-display text-xl font-bold tracking-tight">Dream Destinations</span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-8">
