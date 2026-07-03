@@ -19,8 +19,13 @@ const LITEAPI_PAY_SDK = "https://pay.liteapi.travel/sdk/liteapi-pay.js";
 
 const searchSchema = z.object({
   hotelId: fallback(z.string().optional(), undefined),
+  hotelName: fallback(z.string().optional(), undefined),
+  hotelLocation: fallback(z.string().optional(), undefined),
+  hotelImage: fallback(z.string().optional(), undefined),
   prebookId: fallback(z.string().optional(), undefined),
   offerId: fallback(z.string().optional(), undefined),
+  price: fallback(z.number().optional(), undefined),
+  currency: fallback(z.string().optional(), undefined),
   checkIn: fallback(z.string(), "").default(""),
   checkOut: fallback(z.string(), "").default(""),
   guests: fallback(z.number().int().min(1), 2).default(2),
@@ -53,9 +58,18 @@ function Checkout() {
   const navigate = useNavigate();
   const bookFn = useServerFn(bookHotel);
 
-  const hotel = hotels.find((h) => h.id === search.hotelId) ?? hotels[0];
+  // A live prebook (from hotels.$id.tsx) carries its own name/location/image/price.
+  // Falling back to the mock catalog only covers legacy/demo links without those params.
+  const mockHotel = hotels.find((h) => h.id === search.hotelId) ?? hotels[0];
+  const hotel = {
+    id: search.hotelId ?? mockHotel.id,
+    name: search.hotelName ?? mockHotel.name,
+    location: search.hotelLocation ?? mockHotel.location,
+    img: search.hotelImage ?? mockHotel.img,
+  };
   const nights = nightsBetween(search.checkIn, search.checkOut);
-  const netPrice = hotel.price * nights; // net (supplier) — commission applied server-side
+  const currency = search.currency ?? "USD";
+  const netPrice = search.price ?? mockHotel.price * nights; // net (supplier) — commission applied server-side
   const taxes = Math.round(netPrice * 0.12);
   const total = netPrice + taxes;
 
@@ -122,7 +136,7 @@ function Checkout() {
           specialRequests: form.specialRequests || undefined,
           transactionId,
           netPrice,
-          currency: "USD",
+          currency,
         },
       });
 
@@ -223,7 +237,7 @@ function Checkout() {
                     <div className="flex justify-between"><span className="text-muted-foreground">Room</span><span>{search.room || "Deluxe King"}</span></div>
                   </div>
                   <div className="mt-4 pt-4 border-t border-border space-y-2 text-sm">
-                    <div className="flex justify-between"><span className="text-muted-foreground">${hotel.price} × {nights} night{nights > 1 ? "s" : ""}</span><span>${netPrice.toLocaleString()}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">${(netPrice / nights).toFixed(0)} × {nights} night{nights > 1 ? "s" : ""}</span><span>${netPrice.toLocaleString()}</span></div>
                     <div className="flex justify-between"><span className="text-muted-foreground">Taxes & fees</span><span>${taxes.toLocaleString()}</span></div>
                   </div>
                   <div className="mt-4 pt-4 border-t border-border flex justify-between font-bold text-lg">

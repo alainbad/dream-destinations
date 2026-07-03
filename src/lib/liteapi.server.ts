@@ -102,6 +102,9 @@ export type LiteRateHotel = {
   roomTypes?: Array<{
     offerId: string;
     rates?: Array<{
+      name?: string;
+      maxOccupancy?: number;
+      boardName?: string;
       retailRate?: { total?: Array<{ amount: number; currency: string }> };
     }>;
   }>;

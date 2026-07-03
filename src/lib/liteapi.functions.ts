@@ -7,7 +7,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { hotels as mockHotels } from "@/lib/mock-data";
+import { hotels as mockHotels, rooms as mockRooms } from "@/lib/mock-data";
 import { applyMarkup, markupPctFor, type MarkedUpPrice } from "@/lib/pricing";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -140,6 +140,142 @@ function guessCountry(location: string): string | undefined {
   if (s.includes("bali") || s.includes("indonesia")) return "ID";
   if (s.includes("maldives")) return "MV";
   return undefined;
+}
+
+// ---------- Detail ----------
+
+export type HotelDetailRoom = {
+  name: string;
+  guests: number;
+  offerId?: string;
+  img?: string;
+  bed?: string;
+  size?: string;
+  price: MarkedUpPrice;
+};
+
+export type HotelDetailResult = {
+  id: string;
+  name: string;
+  location: string;
+  country?: string;
+  stars: number;
+  rating: number;
+  ratingLabel: string;
+  reviews: number;
+  img: string;
+  gallery: string[];
+  amenities: string[];
+  description: string;
+  rooms: HotelDetailRoom[];
+};
+
+const DetailInput = z.object({
+  hotelId: z.string().min(1),
+  checkIn: z.string().default(""),
+  checkOut: z.string().default(""),
+  guests: z.number().int().min(1).default(2),
+});
+
+function nightsBetween(a: string, b: string): number {
+  const d1 = new Date(a).getTime();
+  const d2 = new Date(b).getTime();
+  if (isNaN(d1) || isNaN(d2) || d2 <= d1) return 3;
+  return Math.max(1, Math.round((d2 - d1) / 86400000));
+}
+
+export const getHotelDetails = createServerFn({ method: "GET" })
+  .inputValidator((input: unknown) => DetailInput.parse(input))
+  .handler(async ({ data }): Promise<{ hotel: HotelDetailResult | null; source: "live" | "mock" }> => {
+    const { hasLiteApiKeys, getHotel, getRates } = await import("@/lib/liteapi.server");
+
+    if (!hasLiteApiKeys()) return { hotel: mockDetail(data.hotelId), source: "mock" };
+
+    const fallbackDates = defaultDateRange();
+    const checkin = data.checkIn || fallbackDates.checkin;
+    const checkout = data.checkOut || fallbackDates.checkout;
+    const nights = nightsBetween(checkin, checkout);
+
+    try {
+      const res = await getHotel(data.hotelId);
+      const h = res.data;
+      if (!h) return { hotel: mockDetail(data.hotelId), source: "mock" };
+
+      let rooms: HotelDetailRoom[] = [];
+      try {
+        const ratesRes = await getRates({
+          hotelIds: [data.hotelId],
+          checkin,
+          checkout,
+          adults: data.guests,
+          currency: "USD",
+        });
+        const rateHotel = (ratesRes.data ?? []).find((r) => r.hotelId === data.hotelId);
+        rooms = (rateHotel?.roomTypes ?? []).map((rt) => {
+          const rate = rt.rates?.[0];
+          const total = rate?.retailRate?.total?.[0];
+          const perNight = total ? total.amount / nights : 0;
+          return {
+            name: rate?.name || "Room",
+            guests: rate?.maxOccupancy || data.guests,
+            offerId: rt.offerId,
+            price: applyMarkup(perNight, total?.currency || "USD", { country: h.country }),
+          };
+        });
+      } catch (rateErr) {
+        console.error("liteapi.getHotelDetails rates failed", rateErr);
+      }
+
+      return {
+        source: "live",
+        hotel: {
+          id: h.id,
+          name: h.name,
+          location: [h.city, h.country].filter(Boolean).join(", "),
+          country: h.country,
+          stars: h.stars ?? 0,
+          rating: h.rating ?? 0,
+          ratingLabel: "",
+          reviews: h.reviewCount ?? 0,
+          img: h.thumbnail || h.images?.[0] || "",
+          gallery: h.images?.length ? h.images : [h.thumbnail].filter((x): x is string => Boolean(x)),
+          amenities: [],
+          description: "",
+          rooms,
+        },
+      };
+    } catch (err) {
+      console.error("liteapi.getHotelDetails failed, falling back to mock", err);
+      return { hotel: mockDetail(data.hotelId), source: "mock" };
+    }
+  });
+
+function mockDetail(hotelId: string): HotelDetailResult | null {
+  const h = mockHotels.find((x) => x.id === hotelId);
+  if (!h) return null;
+  const country = guessCountry(h.location);
+  return {
+    id: h.id,
+    name: h.name,
+    location: h.location,
+    country,
+    stars: h.stars,
+    rating: h.rating,
+    ratingLabel: h.ratingLabel,
+    reviews: h.reviews,
+    img: h.img,
+    gallery: h.gallery,
+    amenities: h.amenities,
+    description: h.description,
+    rooms: mockRooms.map((r) => ({
+      name: r.name,
+      guests: r.guests,
+      img: r.img,
+      bed: r.bed,
+      size: r.size,
+      price: applyMarkup(r.price, "USD", { country }),
+    })),
+  };
 }
 
 // ---------- Prebook ----------
