@@ -113,7 +113,8 @@ export const prebook = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { prebookRate } = await import("@/lib/liteapi.server");
     const res = await prebookRate(data.offerId);
-    return res.data;
+    const { prebookId, offerId, price, currency } = res.data;
+    return { prebookId, offerId, price, currency };
   });
 
 // ---------- Book (requires auth) ----------
