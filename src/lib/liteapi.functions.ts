@@ -50,7 +50,10 @@ export const searchHotels = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<{ results: HotelSearchResult[]; source: "live" | "mock" }> => {
     const { hasLiteApiKeys, searchHotels: liteSearch, getRates, cheapestOfferByHotel } = await import("@/lib/liteapi.server");
 
-    if (!hasLiteApiKeys()) return mockResults(data.destination, data.promo);
+    if (!hasLiteApiKeys()) {
+      console.warn("liteapi.searchHotels: LITEAPI_PUBLIC_KEY/LITEAPI_PRIVATE_KEY not set in this runtime — using mock results");
+      return mockResults(data.destination, data.promo);
+    }
 
     const fallbackDates = defaultDateRange();
     const checkin = data.checkIn || fallbackDates.checkin;

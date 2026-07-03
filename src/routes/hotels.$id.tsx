@@ -116,6 +116,9 @@ function HotelDetail() {
             <div>
               <h1 className="font-display text-4xl md:text-5xl font-bold">{hotel.name}</h1>
               <p className="text-muted-foreground mt-1 flex items-center gap-1.5"><MapPin className="w-4 h-4" />{hotel.location}</p>
+              {data.source === "mock" && (
+                <p className="mt-1 text-xs text-muted-foreground/70">Demo property — live data unavailable for this listing.</p>
+              )}
             </div>
             <div className="flex items-center gap-3 bg-card rounded-xl px-4 py-2.5 shadow-card border border-border/60">
               <span className="bg-gradient-cta text-white px-3 py-1.5 rounded-lg font-bold">{hotel.rating}</span>

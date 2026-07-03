@@ -71,6 +71,9 @@ function HotelsPage() {
           <p className="mt-2 text-white/80">
             {search.destination ? `Showing stays in ${search.destination}` : `${sorted.length} handpicked properties across the globe`}
           </p>
+          {data.source === "mock" && (
+            <p className="mt-2 text-xs text-white/60">Showing demo hotels — live search is currently unavailable.</p>
+          )}
         </div>
       </div>
 
