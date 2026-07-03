@@ -71,13 +71,24 @@ export type LiteHotel = {
   countryCode?: string;
   city?: string;
   stars?: number;
+  starRating?: number;
   rating?: number;
   reviewCount?: number;
   address?: string;
   thumbnail?: string;
+  main_photo?: string;
   images?: string[];
+  hotelImages?: Array<{ url?: string; urlHd?: string; caption?: string; order?: number; defaultImage?: boolean }>;
   hotelDescription?: string;
   description?: string;
+  rooms?: Array<{
+    id?: number;
+    roomName?: string;
+    description?: string;
+    maxOccupancy?: number;
+    maxAdults?: number;
+    photos?: Array<{ url?: string; failoverPhoto?: string; mainPhoto?: boolean }>;
+  }>;
 };
 
 /** Maps common destination names to ISO-2 country codes for LiteAPI. */
