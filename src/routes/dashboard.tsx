@@ -10,7 +10,7 @@ import { MapPin, Calendar, Heart, Star } from "lucide-react";
 import { hotels } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/dashboard")({
-  head: () => ({ meta: [{ title: "Dashboard — TravelHub" }] }),
+  head: () => ({ meta: [{ title: "Dashboard — Dream Destinations" }] }),
   component: Dashboard,
 });
 
