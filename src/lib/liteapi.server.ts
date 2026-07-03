@@ -97,6 +97,62 @@ export async function getHotel(hotelId: string) {
   return call<{ data: LiteHotel }>(`/hotels/${encodeURIComponent(hotelId)}`, { key: "public" });
 }
 
+export type LiteRateHotel = {
+  hotelId: string;
+  roomTypes?: Array<{
+    offerId: string;
+    rates?: Array<{
+      retailRate?: { total?: Array<{ amount: number; currency: string }> };
+    }>;
+  }>;
+};
+
+/**
+ * Fetches live rates for a set of hotels for the given dates. Pass the
+ * hotelIds returned by searchHotels(). Each hotel's cheapest offerId/amount
+ * is what prebookRate() ultimately needs.
+ */
+export async function getRates(params: {
+  hotelIds: string[];
+  checkin: string;
+  checkout: string;
+  adults: number;
+  currency?: string;
+}) {
+  return call<{ data: LiteRateHotel[] }>("/hotels/rates", {
+    key: "public",
+    method: "POST",
+    body: {
+      hotelIds: params.hotelIds,
+      checkin: params.checkin,
+      checkout: params.checkout,
+      currency: params.currency || "USD",
+      occupancies: [{ adults: params.adults }],
+    },
+  });
+}
+
+/** Picks the cheapest offer per hotel from a getRates() response. */
+export function cheapestOfferByHotel(
+  rateHotels: LiteRateHotel[],
+): Map<string, { offerId: string; amount: number; currency: string }> {
+  const out = new Map<string, { offerId: string; amount: number; currency: string }>();
+  for (const h of rateHotels) {
+    let best: { offerId: string; amount: number; currency: string } | undefined;
+    for (const rt of h.roomTypes ?? []) {
+      for (const rate of rt.rates ?? []) {
+        const total = rate.retailRate?.total?.[0];
+        if (!total || typeof total.amount !== "number") continue;
+        if (!best || total.amount < best.amount) {
+          best = { offerId: rt.offerId, amount: total.amount, currency: total.currency };
+        }
+      }
+    }
+    if (best) out.set(h.hotelId, best);
+  }
+  return out;
+}
+
 /**
  * Locks a rate for a short window (usually ~15min). Returns prebookId used at
  * the book step. Pass the offerId returned by /hotels/rates.

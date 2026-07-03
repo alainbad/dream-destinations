@@ -35,36 +35,71 @@ const SearchInput = z.object({
   promo: z.boolean().optional(),
 });
 
+/** Defaults used to price a search when the user hasn't picked dates yet. */
+function defaultDateRange(): { checkin: string; checkout: string } {
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const checkin = new Date();
+  checkin.setDate(checkin.getDate() + 7);
+  const checkout = new Date(checkin);
+  checkout.setDate(checkout.getDate() + 3);
+  return { checkin: fmt(checkin), checkout: fmt(checkout) };
+}
+
 export const searchHotels = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => SearchInput.parse(input))
   .handler(async ({ data }): Promise<{ results: HotelSearchResult[]; source: "live" | "mock" }> => {
-    const { hasLiteApiKeys, searchHotels: liteSearch } = await import("@/lib/liteapi.server");
+    const { hasLiteApiKeys, searchHotels: liteSearch, getRates, cheapestOfferByHotel } = await import("@/lib/liteapi.server");
 
     if (!hasLiteApiKeys()) return mockResults(data.destination, data.promo);
+
+    const fallbackDates = defaultDateRange();
+    const checkin = data.checkIn || fallbackDates.checkin;
+    const checkout = data.checkOut || fallbackDates.checkout;
 
     try {
       const res = await liteSearch({
         destination: data.destination,
-        checkin: data.checkIn,
-        checkout: data.checkOut,
+        checkin,
+        checkout,
         adults: data.guests,
         currency: "USD",
       });
+      const hotelList = res.data ?? [];
+
+      let offers = new Map<string, { offerId: string; amount: number; currency: string }>();
+      if (hotelList.length) {
+        try {
+          const ratesRes = await getRates({
+            hotelIds: hotelList.map((h) => h.id),
+            checkin,
+            checkout,
+            adults: data.guests,
+            currency: "USD",
+          });
+          offers = cheapestOfferByHotel(ratesRes.data ?? []);
+        } catch (rateErr) {
+          console.error("liteapi.getRates failed, showing hotels without pricing", rateErr);
+        }
+      }
+
       return {
         source: "live",
-        results: (res.data ?? []).map((h) => ({
-          id: h.id,
-          name: h.name,
-          location: [h.city, h.country].filter(Boolean).join(", "),
-          country: h.country,
-          stars: h.stars ?? 0,
-          rating: h.rating ?? 0,
-          ratingLabel: "",
-          reviews: h.reviewCount ?? 0,
-          img: h.thumbnail || h.images?.[0] || "",
-          amenities: [],
-          price: applyMarkup(0, "USD", { country: h.country, promo: data.promo }),
-        })),
+        results: hotelList.map((h) => {
+          const offer = offers.get(h.id);
+          return {
+            id: h.id,
+            name: h.name,
+            location: [h.city, h.country].filter(Boolean).join(", "),
+            country: h.country,
+            stars: h.stars ?? 0,
+            rating: h.rating ?? 0,
+            ratingLabel: "",
+            reviews: h.reviewCount ?? 0,
+            img: h.thumbnail || h.images?.[0] || "",
+            amenities: [],
+            price: applyMarkup(offer?.amount ?? 0, offer?.currency ?? "USD", { country: h.country, promo: data.promo }),
+          };
+        }),
       };
     } catch (err) {
       console.error("liteapi.searchHotels failed, falling back to mock", err);
