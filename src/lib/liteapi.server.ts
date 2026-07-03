@@ -16,10 +16,10 @@
  */
 
 function base(): string {
-  const env = (process.env.LITEAPI_ENV || "sandbox").toLowerCase();
-  return env === "prod" || env === "production"
-    ? "https://api.liteapi.travel/v3.0"
-    : "https://api.sandbox.liteapi.travel/v3.0";
+  // LiteAPI now uses a single unified endpoint — sandbox vs production is
+  // determined by the API key itself, not the URL. The older
+  // api.sandbox.liteapi.travel host is not universally resolvable.
+  return "https://api.liteapi.travel/v3.0";
 }
 
 function publicKey(): string {
