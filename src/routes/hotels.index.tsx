@@ -20,7 +20,7 @@ const searchSchema = z.object({
 
 export const Route = createFileRoute("/hotels/")({
   validateSearch: zodValidator(searchSchema),
-  head: () => ({ meta: [{ title: "Hotels — TravelHub" }, { name: "description", content: "Browse luxury hotels worldwide." }] }),
+  head: () => ({ meta: [{ title: "Hotels — Dream Destinations" }, { name: "description", content: "Browse curated luxury hotels worldwide." }] }),
   component: HotelsPage,
 });
 
