@@ -214,20 +214,30 @@ export const getHotelDetails = createServerFn({ method: "GET" })
           currency: "USD",
         });
         const rateHotel = (ratesRes.data ?? []).find((r) => r.hotelId === data.hotelId);
+        const roomById = new Map((h.rooms ?? []).map((r) => [r.id, r]));
         rooms = (rateHotel?.roomTypes ?? []).map((rt) => {
           const rate = rt.rates?.[0];
           const total = rate?.retailRate?.total?.[0];
           const perNight = total ? total.amount / nights : 0;
+          const mappedRoom = rate?.mappedRoomId ? roomById.get(rate.mappedRoomId) : undefined;
+          const roomPhoto = mappedRoom?.photos?.[0]?.url || h.main_photo || h.thumbnail || "";
           return {
-            name: rate?.name || "Room",
-            guests: rate?.maxOccupancy || data.guests,
+            name: mappedRoom?.roomName || rate?.name || "Room",
+            guests: rate?.maxOccupancy || mappedRoom?.maxOccupancy || data.guests,
             offerId: rt.offerId,
+            img: roomPhoto,
+            bed: mappedRoom?.description ? undefined : undefined,
+            size: mappedRoom?.description ? undefined : undefined,
             price: applyMarkup(perNight, total?.currency || "USD", { country: h.country }),
           };
         });
       } catch (rateErr) {
         console.error("liteapi.getHotelDetails rates failed", rateErr);
       }
+
+      const gallery =
+        h.hotelImages?.map((img) => img.url).filter((x): x is string => Boolean(x)) ||
+        [h.main_photo || h.thumbnail].filter((x): x is string => Boolean(x));
 
       return {
         source: "live",
@@ -236,14 +246,14 @@ export const getHotelDetails = createServerFn({ method: "GET" })
           name: h.name,
           location: [h.city, h.country].filter(Boolean).join(", "),
           country: h.country,
-          stars: h.stars ?? 0,
+          stars: h.starRating ?? h.stars ?? 0,
           rating: h.rating ?? 0,
           ratingLabel: "",
           reviews: h.reviewCount ?? 0,
-          img: h.thumbnail || h.images?.[0] || "",
-          gallery: h.images?.length ? h.images : [h.thumbnail].filter((x): x is string => Boolean(x)),
+          img: h.main_photo || h.thumbnail || "",
+          gallery,
           amenities: [],
-          description: "",
+          description: h.hotelDescription || "",
           rooms,
         },
       };
