@@ -175,6 +175,8 @@ export async function getRates(params: {
       currency: params.currency || "USD",
       guestNationality: params.guestNationality || "US",
       occupancies: [{ adults: params.adults }],
+      roomMapping: true,
+      maxRatesPerHotel: 10,
     },
   });
 }
