@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { Navbar } from "@/components/Navbar";
@@ -9,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Star, MapPin } from "lucide-react";
-import { hotels } from "@/lib/mock-data";
+import { searchHotels } from "@/lib/liteapi.functions";
 
 const searchSchema = z.object({
   destination: fallback(z.string(), "").default(""),
@@ -18,29 +19,41 @@ const searchSchema = z.object({
   guests: fallback(z.number().int().min(1), 2).default(2),
 });
 
+type SearchDeps = z.infer<typeof searchSchema>;
+
+function hotelsSearchQueryOptions(deps: SearchDeps) {
+  return queryOptions({
+    queryKey: ["hotels-search", deps],
+    queryFn: () => searchHotels({ data: deps }),
+  });
+}
+
 export const Route = createFileRoute("/hotels/")({
   validateSearch: zodValidator(searchSchema),
+  loaderDeps: ({ search }) => search,
+  loader: ({ context, deps }) => context.queryClient.ensureQueryData(hotelsSearchQueryOptions(deps)),
   head: () => ({ meta: [{ title: "Hotels — Dream Destinations" }, { name: "description", content: "Browse curated luxury hotels worldwide." }] }),
   component: HotelsPage,
 });
 
 function HotelsPage() {
   const search = Route.useSearch();
+  const { data } = useSuspenseQuery(hotelsSearchQueryOptions(search));
+  const hotels = data.results;
   const [price, setPrice] = useState([100, 3000]);
   const [stars, setStars] = useState<number[]>([5, 4]);
   const [amenities, setAmenities] = useState<string[]>([]);
   const [sort, setSort] = useState("rating");
 
   const filtered = hotels.filter((h) => {
-    if (search.destination && !h.location.toLowerCase().includes(search.destination.toLowerCase().split(",")[0].trim())) return false;
-    if (h.price < price[0] || h.price > price[1]) return false;
+    if (h.price.customerTotal < price[0] || h.price.customerTotal > price[1]) return false;
     if (stars.length && !stars.includes(h.stars)) return false;
     if (amenities.length && !amenities.every((a) => h.amenities.includes(a))) return false;
     return true;
   });
 
   const sorted = [...filtered].sort((a, b) => {
-    if (sort === "price") return a.price - b.price;
+    if (sort === "price") return a.price.customerTotal - b.price.customerTotal;
     if (sort === "reviews") return b.reviews - a.reviews;
     return b.rating - a.rating;
   });
@@ -56,7 +69,7 @@ function HotelsPage() {
         <div className="max-w-7xl mx-auto px-6 py-12">
           <h1 className="font-display text-4xl md:text-5xl font-bold">Find Your Perfect Stay</h1>
           <p className="mt-2 text-white/80">
-            {search.destination ? `Showing stays in ${search.destination}` : `${hotels.length} handpicked properties across the globe`}
+            {search.destination ? `Showing stays in ${search.destination}` : `${sorted.length} handpicked properties across the globe`}
           </p>
         </div>
       </div>
@@ -130,14 +143,13 @@ function HotelsPage() {
                     <span className="font-semibold text-sm">{h.ratingLabel}</span>
                     <span className="text-xs text-muted-foreground">· {h.reviews.toLocaleString()} reviews</span>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-3 line-clamp-2">{h.description}</p>
                   <div className="flex flex-wrap gap-1.5 mt-3">
                     {h.amenities.slice(0,5).map(a=><span key={a} className="text-xs px-2 py-1 rounded-md bg-secondary">{a}</span>)}
                   </div>
                   <div className="flex items-end justify-between mt-auto pt-5">
                     <div>
                       <div className="text-xs text-muted-foreground">Per night from</div>
-                      <div className="font-bold text-2xl text-primary">${h.price}</div>
+                      <div className="font-bold text-2xl text-primary">${h.price.customerTotal}</div>
                     </div>
                     <Button asChild className="bg-gradient-cta text-white border-0 shadow-glow">
                       <Link to="/hotels/$id" params={{id:h.id}} search={bookingSearch}>View Hotel</Link>

@@ -23,11 +23,12 @@ export type HotelSearchResult = {
   ratingLabel: string;
   reviews: number;
   img: string;
+  amenities: string[];
   price: MarkedUpPrice;
 };
 
 const SearchInput = z.object({
-  destination: z.string().min(1),
+  destination: z.string().default(""),
   checkIn: z.string().default(""),
   checkOut: z.string().default(""),
   guests: z.number().int().min(1).default(2),
@@ -61,6 +62,7 @@ export const searchHotels = createServerFn({ method: "GET" })
           ratingLabel: "",
           reviews: h.reviewCount ?? 0,
           img: h.thumbnail || h.images?.[0] || "",
+          amenities: [],
           price: applyMarkup(0, "USD", { country: h.country, promo: data.promo }),
         })),
       };
@@ -85,6 +87,7 @@ function mockResults(destination: string, promo?: boolean): { results: HotelSear
       ratingLabel: h.ratingLabel,
       reviews: h.reviews,
       img: h.img,
+      amenities: h.amenities,
       price: applyMarkup(h.price, "USD", { country: guessCountry(h.location), promo }),
     })),
   };
