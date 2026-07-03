@@ -14,7 +14,90 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bookings: {
+        Row: {
+          check_in: string
+          check_out: string
+          commission: number
+          created_at: string
+          currency: string
+          customer_total: number
+          guest_email: string
+          guest_first_name: string
+          guest_last_name: string
+          guest_phone: string | null
+          guests: number
+          hotel_id: string
+          hotel_image: string | null
+          hotel_location: string | null
+          hotel_name: string
+          id: string
+          liteapi_booking_id: string | null
+          liteapi_prebook_id: string | null
+          markup_pct: number
+          net_price: number
+          room_name: string | null
+          special_requests: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          check_in: string
+          check_out: string
+          commission?: number
+          created_at?: string
+          currency?: string
+          customer_total?: number
+          guest_email: string
+          guest_first_name: string
+          guest_last_name: string
+          guest_phone?: string | null
+          guests?: number
+          hotel_id: string
+          hotel_image?: string | null
+          hotel_location?: string | null
+          hotel_name: string
+          id?: string
+          liteapi_booking_id?: string | null
+          liteapi_prebook_id?: string | null
+          markup_pct?: number
+          net_price?: number
+          room_name?: string | null
+          special_requests?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          check_in?: string
+          check_out?: string
+          commission?: number
+          created_at?: string
+          currency?: string
+          customer_total?: number
+          guest_email?: string
+          guest_first_name?: string
+          guest_last_name?: string
+          guest_phone?: string | null
+          guests?: number
+          hotel_id?: string
+          hotel_image?: string | null
+          hotel_location?: string | null
+          hotel_name?: string
+          id?: string
+          liteapi_booking_id?: string | null
+          liteapi_prebook_id?: string | null
+          markup_pct?: number
+          net_price?: number
+          room_name?: string | null
+          special_requests?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
