@@ -2,13 +2,16 @@
  * Client-safe server-function wrappers around the LiteAPI adapter.
  * The .handler() bodies are stripped from the client bundle.
  *
- * Until LITEAPI_* secrets are set, these functions fall back to mock data so
- * the UI keeps working during development.
+ * Until LITEAPI_* keys are set (or LiteAPI sandbox is reachable), search falls
+ * back to mock hotels so the UI keeps working during development.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { hotels as mockHotels } from "@/lib/mock-data";
-import { applyMarkup, type MarkedUpPrice } from "@/lib/pricing";
+import { applyMarkup, markupPctFor, type MarkedUpPrice } from "@/lib/pricing";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+
+// ---------- Search ----------
 
 export type HotelSearchResult = {
   id: string;
@@ -20,7 +23,7 @@ export type HotelSearchResult = {
   ratingLabel: string;
   reviews: number;
   img: string;
-  price: MarkedUpPrice; // marked-up customer-facing price per night
+  price: MarkedUpPrice;
 };
 
 const SearchInput = z.object({
@@ -36,28 +39,7 @@ export const searchHotels = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<{ results: HotelSearchResult[]; source: "live" | "mock" }> => {
     const { hasLiteApiKeys, searchHotels: liteSearch } = await import("@/lib/liteapi.server");
 
-    if (!hasLiteApiKeys()) {
-      // Mock fallback so the UI works before keys are configured.
-      const filtered = mockHotels.filter((h) =>
-        h.location.toLowerCase().includes(data.destination.toLowerCase()),
-      );
-      const list = filtered.length ? filtered : mockHotels;
-      return {
-        source: "mock",
-        results: list.map((h) => ({
-          id: h.id,
-          name: h.name,
-          location: h.location,
-          country: guessCountry(h.location),
-          stars: h.stars,
-          rating: h.rating,
-          ratingLabel: h.ratingLabel,
-          reviews: h.reviews,
-          img: h.img,
-          price: applyMarkup(h.price, "USD", { country: guessCountry(h.location), promo: data.promo }),
-        })),
-      };
-    }
+    if (!hasLiteApiKeys()) return mockResults(data.destination, data.promo);
 
     try {
       const res = await liteSearch({
@@ -67,8 +49,6 @@ export const searchHotels = createServerFn({ method: "GET" })
         adults: data.guests,
         currency: "USD",
       });
-      // NOTE: LiteAPI /hotels returns metadata only; rates come from /hotels/rates.
-      // We're returning a placeholder net price of 0 until the rates call is wired.
       return {
         source: "live",
         results: (res.data ?? []).map((h) => ({
@@ -85,10 +65,30 @@ export const searchHotels = createServerFn({ method: "GET" })
         })),
       };
     } catch (err) {
-      console.error("liteapi.searchHotels failed", err);
-      return { source: "mock", results: [] };
+      console.error("liteapi.searchHotels failed, falling back to mock", err);
+      return mockResults(data.destination, data.promo);
     }
   });
+
+function mockResults(destination: string, promo?: boolean): { results: HotelSearchResult[]; source: "mock" } {
+  const filtered = mockHotels.filter((h) => h.location.toLowerCase().includes(destination.toLowerCase()));
+  const list = filtered.length ? filtered : mockHotels;
+  return {
+    source: "mock",
+    results: list.map((h) => ({
+      id: h.id,
+      name: h.name,
+      location: h.location,
+      country: guessCountry(h.location),
+      stars: h.stars,
+      rating: h.rating,
+      ratingLabel: h.ratingLabel,
+      reviews: h.reviews,
+      img: h.img,
+      price: applyMarkup(h.price, "USD", { country: guessCountry(h.location), promo }),
+    })),
+  };
+}
 
 function guessCountry(location: string): string | undefined {
   const s = location.toLowerCase();
@@ -103,3 +103,105 @@ function guessCountry(location: string): string | undefined {
   if (s.includes("maldives")) return "MV";
   return undefined;
 }
+
+// ---------- Prebook ----------
+
+const PrebookInput = z.object({ offerId: z.string().min(1) });
+
+export const prebook = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => PrebookInput.parse(input))
+  .handler(async ({ data }) => {
+    const { prebookRate } = await import("@/lib/liteapi.server");
+    const res = await prebookRate(data.offerId);
+    const { prebookId, offerId, price, currency } = res.data;
+    return { prebookId, offerId, price, currency };
+  });
+
+// ---------- Book (requires auth) ----------
+
+const BookInput = z.object({
+  prebookId: z.string().min(1),
+  hotelId: z.string().min(1),
+  hotelName: z.string().min(1),
+  hotelLocation: z.string().optional(),
+  hotelImage: z.string().optional(),
+  checkIn: z.string().min(1),
+  checkOut: z.string().min(1),
+  guests: z.number().int().min(1),
+  roomName: z.string().optional(),
+  holder: z.object({
+    firstName: z.string().min(1),
+    lastName: z.string().min(1),
+    email: z.string().email(),
+    phone: z.string().optional(),
+  }),
+  specialRequests: z.string().optional(),
+  transactionId: z.string().min(1),
+  netPrice: z.number().min(0),
+  currency: z.string().default("USD"),
+});
+
+export const bookHotel = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => BookInput.parse(input))
+  .handler(async ({ data, context }) => {
+    const { bookRate } = await import("@/lib/liteapi.server");
+
+    const markupPct = markupPctFor({ country: guessCountry(data.hotelLocation ?? "") });
+    const commission = Math.round(data.netPrice * markupPct * 100) / 100;
+    const customerTotal = Math.round((data.netPrice + commission) * 100) / 100;
+
+    const liteRes = await bookRate({
+      prebookId: data.prebookId,
+      holder: data.holder,
+      guests: [{ firstName: data.holder.firstName, lastName: data.holder.lastName, email: data.holder.email }],
+      transactionId: data.transactionId,
+      specialRequests: data.specialRequests,
+    });
+
+    const { data: row, error } = await context.supabase
+      .from("bookings")
+      .insert({
+        user_id: context.userId,
+        liteapi_booking_id: liteRes.data.bookingId,
+        liteapi_prebook_id: data.prebookId,
+        hotel_id: data.hotelId,
+        hotel_name: data.hotelName,
+        hotel_location: data.hotelLocation,
+        hotel_image: data.hotelImage,
+        check_in: data.checkIn,
+        check_out: data.checkOut,
+        guests: data.guests,
+        room_name: data.roomName,
+        guest_first_name: data.holder.firstName,
+        guest_last_name: data.holder.lastName,
+        guest_email: data.holder.email,
+        guest_phone: data.holder.phone,
+        special_requests: data.specialRequests,
+        currency: data.currency,
+        net_price: data.netPrice,
+        markup_pct: markupPct,
+        commission,
+        customer_total: customerTotal,
+        status: liteRes.data.status || "confirmed",
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(`Booking save failed: ${error.message}`);
+
+    return { booking: row, liteapi: liteRes.data };
+  });
+
+// ---------- List (auth) ----------
+
+export const listMyBookings = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("bookings")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });

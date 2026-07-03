@@ -6,8 +6,13 @@
  * Sandbox base: https://api.sandbox.liteapi.travel/v3.0
  * Prod base:    https://api.liteapi.travel/v3.0
  *
- * Auth header: X-API-Key (use the public key for search endpoints and the
- * private/secret key for prebook + book).
+ * Auth header: X-API-Key (public key for search, private key for prebook + book).
+ *
+ * PAYMENTS: LiteAPI acts as the merchant of record. Cards are tokenized in the
+ * browser via the LiteAPI Pay JS SDK (https://pay.liteapi.travel/sdk/liteapi-pay.js)
+ * — the SDK returns a transactionId which is then passed to /rates/book with
+ * method: "TRANSACTION_ID". LiteAPI captures the funds and pays out our
+ * commission on the configured weekly/monthly cycle.
  */
 
 function base(): string {
@@ -33,6 +38,10 @@ export function hasLiteApiKeys(): boolean {
   return Boolean(process.env.LITEAPI_PUBLIC_KEY && process.env.LITEAPI_PRIVATE_KEY);
 }
 
+export function liteApiEnv(): "sandbox" | "prod" {
+  return (process.env.LITEAPI_ENV || "sandbox").toLowerCase() === "prod" ? "prod" : "sandbox";
+}
+
 async function call<T>(path: string, opts: { key: "public" | "private"; method?: "GET" | "POST"; body?: unknown; query?: Record<string, string | number | undefined> }): Promise<T> {
   const url = new URL(base() + path);
   if (opts.query) {
@@ -56,7 +65,7 @@ async function call<T>(path: string, opts: { key: "public" | "private"; method?:
   return res.json() as Promise<T>;
 }
 
-// ---- Endpoints (typed loosely; refine as we integrate) ----
+// ---- Endpoints ----
 
 export type LiteHotel = {
   id: string;
@@ -78,14 +87,9 @@ export async function searchHotels(params: {
   adults: number;
   currency?: string;
 }) {
-  // GET /hotels — free-text destination search, then /hotels/rates for availability.
   return call<{ data: LiteHotel[] }>("/hotels", {
     key: "public",
-    query: {
-      countryCode: undefined,
-      cityName: params.destination,
-      limit: 24,
-    },
+    query: { cityName: params.destination, limit: 24 },
   });
 }
 
@@ -93,20 +97,53 @@ export async function getHotel(hotelId: string) {
   return call<{ data: LiteHotel }>(`/hotels/${encodeURIComponent(hotelId)}`, { key: "public" });
 }
 
-export async function prebook(rateId: string) {
-  return call<{ data: { prebookId: string; price: number; currency: string } }>(
-    "/rates/prebook",
-    { key: "private", method: "POST", body: { offerId: rateId } },
-  );
+/**
+ * Locks a rate for a short window (usually ~15min). Returns prebookId used at
+ * the book step. Pass the offerId returned by /hotels/rates.
+ */
+export async function prebookRate(offerId: string) {
+  return call<{
+    data: {
+      prebookId: string;
+      offerId: string;
+      price: number;
+      currency: string;
+      cancellationPolicies?: unknown;
+    };
+  }>("/rates/prebook", {
+    key: "private",
+    method: "POST",
+    body: { offerId },
+  });
 }
 
-export async function book(input: {
+/**
+ * Confirms the booking. `transactionId` comes from the LiteAPI Pay SDK in the
+ * browser after the guest enters their card details.
+ */
+export async function bookRate(input: {
   prebookId: string;
-  holder: { firstName: string; lastName: string; email: string };
-  payment: { method: "STRIPE_TOKEN"; token: string };
+  holder: { firstName: string; lastName: string; email: string; phone?: string };
+  guests: Array<{ firstName: string; lastName: string; email?: string }>;
+  transactionId: string;
+  specialRequests?: string;
 }) {
-  return call<{ data: { bookingId: string; status: string } }>(
-    "/rates/book",
-    { key: "private", method: "POST", body: input },
-  );
+  return call<{
+    data: {
+      bookingId: string;
+      status: string;
+      supplierBookingId?: string;
+      supplierBookingName?: string;
+    };
+  }>("/rates/book", {
+    key: "private",
+    method: "POST",
+    body: {
+      prebookId: input.prebookId,
+      holder: input.holder,
+      guests: input.guests,
+      payment: { method: "TRANSACTION_ID", transactionId: input.transactionId },
+      specialRequests: input.specialRequests,
+    },
+  });
 }
