@@ -25,27 +25,21 @@ function base(): string {
     : "https://api.sandbox.liteapi.travel/v3.0";
 }
 
-function publicKey(): string {
-  const k = process.env.LITEAPI_PUBLIC_KEY;
-  if (!k) throw new Error("LITEAPI_PUBLIC_KEY is not configured");
-  return k;
-}
-
-function privateKey(): string {
+function apiKey(): string {
   const k = process.env.LITEAPI_PRIVATE_KEY;
   if (!k) throw new Error("LITEAPI_PRIVATE_KEY is not configured");
   return k;
 }
 
 export function hasLiteApiKeys(): boolean {
-  return Boolean(process.env.LITEAPI_PUBLIC_KEY && process.env.LITEAPI_PRIVATE_KEY);
+  return Boolean(process.env.LITEAPI_PRIVATE_KEY);
 }
 
 export function liteApiEnv(): "sandbox" | "prod" {
   return (process.env.LITEAPI_ENV || "sandbox").toLowerCase() === "prod" ? "prod" : "sandbox";
 }
 
-async function call<T>(path: string, opts: { key: "public" | "private"; method?: "GET" | "POST"; body?: unknown; query?: Record<string, string | number | undefined> }): Promise<T> {
+async function call<T>(path: string, opts: { method?: "GET" | "POST"; body?: unknown; query?: Record<string, string | number | undefined> }): Promise<T> {
   const url = new URL(base() + path);
   if (opts.query) {
     for (const [k, v] of Object.entries(opts.query)) {
@@ -57,7 +51,7 @@ async function call<T>(path: string, opts: { key: "public" | "private"; method?:
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
-      "X-API-Key": opts.key === "public" ? publicKey() : privateKey(),
+      "X-API-Key": apiKey(),
     },
     body: opts.body ? JSON.stringify(opts.body) : undefined,
   });
@@ -74,6 +68,7 @@ export type LiteHotel = {
   id: string;
   name: string;
   country?: string;
+  countryCode?: string;
   city?: string;
   stars?: number;
   rating?: number;
@@ -81,7 +76,36 @@ export type LiteHotel = {
   address?: string;
   thumbnail?: string;
   images?: string[];
+  hotelDescription?: string;
+  description?: string;
 };
+
+/** Maps common destination names to ISO-2 country codes for LiteAPI. */
+function destinationToCountryCode(destination: string): string | undefined {
+  const s = destination.toLowerCase();
+  if (s.includes("uae") || s.includes("dubai") || s.includes("abu dhabi")) return "AE";
+  if (s.includes("lebanon") || s.includes("beirut")) return "LB";
+  if (s.includes("france") || s.includes("paris")) return "FR";
+  if (s.includes("spain") || s.includes("barcelona")) return "ES";
+  if (s.includes("uk") || s.includes("london")) return "GB";
+  if (s.includes("italy") || s.includes("rome")) return "IT";
+  if (s.includes("usa") || s.includes("new york")) return "US";
+  if (s.includes("bali") || s.includes("indonesia")) return "ID";
+  if (s.includes("maldives")) return "MV";
+  if (s.includes("turkey") || s.includes("istanbul")) return "TR";
+  if (s.includes("greece") || s.includes("athens") || s.includes("santorini")) return "GR";
+  if (s.includes("thailand") || s.includes("bangkok") || s.includes("phuket")) return "TH";
+  if (s.includes("egypt") || s.includes("cairo") || s.includes("sharm")) return "EG";
+  if (s.includes("morocco") || s.includes("marrakech")) return "MA";
+  if (s.includes("japan") || s.includes("tokyo")) return "JP";
+  if (s.includes("portugal") || s.includes("lisbon")) return "PT";
+  if (s.includes("netherlands") || s.includes("amsterdam")) return "NL";
+  if (s.includes("germany") || s.includes("berlin")) return "DE";
+  if (s.includes("switzerland") || s.includes("zurich")) return "CH";
+  if (s.includes("australia") || s.includes("sydney")) return "AU";
+  if (s.includes("canada") || s.includes("toronto")) return "CA";
+  return undefined;
+}
 
 export async function searchHotels(params: {
   destination: string;
@@ -90,14 +114,20 @@ export async function searchHotels(params: {
   adults: number;
   currency?: string;
 }) {
-  return call<{ data: LiteHotel[] }>("/hotels", {
-    key: "public",
-    query: { cityName: params.destination, limit: 24 },
+  return call<{ data: LiteHotel[]; hotelIds?: string[]; total?: number }>("/data/hotels", {
+    query: {
+      cityName: params.destination,
+      countryCode: destinationToCountryCode(params.destination),
+      limit: 24,
+    },
   });
 }
 
 export async function getHotel(hotelId: string) {
-  return call<{ data: LiteHotel }>(`/hotels/${encodeURIComponent(hotelId)}`, { key: "public" });
+  const res = await call<{ data: LiteHotel[]; hotelIds?: string[]; total?: number }>("/data/hotels", {
+    query: { hotelIds: hotelId, limit: 1 },
+  });
+  return { data: res.data?.[0] };
 }
 
 export type LiteRateHotel = {
@@ -124,15 +154,16 @@ export async function getRates(params: {
   checkout: string;
   adults: number;
   currency?: string;
+  guestNationality?: string;
 }) {
   return call<{ data: LiteRateHotel[] }>("/hotels/rates", {
-    key: "public",
     method: "POST",
     body: {
       hotelIds: params.hotelIds,
       checkin: params.checkin,
       checkout: params.checkout,
       currency: params.currency || "USD",
+      guestNationality: params.guestNationality || "US",
       occupancies: [{ adults: params.adults }],
     },
   });
@@ -173,7 +204,6 @@ export async function prebookRate(offerId: string) {
       cancellationPolicies?: unknown;
     };
   }>("/rates/prebook", {
-    key: "private",
     method: "POST",
     body: { offerId },
   });
@@ -198,7 +228,6 @@ export async function bookRate(input: {
       supplierBookingName?: string;
     };
   }>("/rates/book", {
-    key: "private",
     method: "POST",
     body: {
       prebookId: input.prebookId,
