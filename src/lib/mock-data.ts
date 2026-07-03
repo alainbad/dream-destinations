@@ -123,10 +123,3 @@ export const rooms = [
   { name: "Royal Panoramic Suite", bed: "2 King Beds", guests: 4, size: "180m²", price: 2980, img: "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=600&q=80" },
 ];
 
-export const flights = [
-  { id: "1", airline: "Emirates", code: "EK 203", from: "DXB", to: "JFK", dep: "08:30", arr: "14:45", duration: "14h 15m", stops: "Nonstop", price: 1840 },
-  { id: "2", airline: "Qatar Airways", code: "QR 701", from: "DOH", to: "CDG", dep: "02:10", arr: "07:35", duration: "6h 25m", stops: "Nonstop", price: 920 },
-  { id: "3", airline: "Turkish Airlines", code: "TK 1984", from: "IST", to: "BCN", dep: "11:20", arr: "14:10", duration: "3h 50m", stops: "Nonstop", price: 320 },
-  { id: "4", airline: "Etihad", code: "EY 19", from: "AUH", to: "LHR", dep: "09:15", arr: "13:20", duration: "7h 05m", stops: "Nonstop", price: 780 },
-  { id: "5", airline: "Singapore Airlines", code: "SQ 25", from: "SIN", to: "HND", dep: "23:40", arr: "07:05", duration: "7h 25m", stops: "Nonstop", price: 1120 },
-];

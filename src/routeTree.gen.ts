@@ -11,7 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as FlightsRouteImport } from './routes/flights'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as AiTripPlannerRouteImport } from './routes/ai-trip-planner'
@@ -27,11 +26,6 @@ const SignupRoute = SignupRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FlightsRoute = FlightsRouteImport.update({
-  id: '/flights',
-  path: '/flights',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -70,7 +64,6 @@ export interface FileRoutesByFullPath {
   '/ai-trip-planner': typeof AiTripPlannerRoute
   '/checkout': typeof CheckoutRoute
   '/dashboard': typeof DashboardRoute
-  '/flights': typeof FlightsRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/hotels/$id': typeof HotelsIdRoute
@@ -81,7 +74,6 @@ export interface FileRoutesByTo {
   '/ai-trip-planner': typeof AiTripPlannerRoute
   '/checkout': typeof CheckoutRoute
   '/dashboard': typeof DashboardRoute
-  '/flights': typeof FlightsRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/hotels/$id': typeof HotelsIdRoute
@@ -93,7 +85,6 @@ export interface FileRoutesById {
   '/ai-trip-planner': typeof AiTripPlannerRoute
   '/checkout': typeof CheckoutRoute
   '/dashboard': typeof DashboardRoute
-  '/flights': typeof FlightsRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/hotels/$id': typeof HotelsIdRoute
@@ -106,7 +97,6 @@ export interface FileRouteTypes {
     | '/ai-trip-planner'
     | '/checkout'
     | '/dashboard'
-    | '/flights'
     | '/login'
     | '/signup'
     | '/hotels/$id'
@@ -117,7 +107,6 @@ export interface FileRouteTypes {
     | '/ai-trip-planner'
     | '/checkout'
     | '/dashboard'
-    | '/flights'
     | '/login'
     | '/signup'
     | '/hotels/$id'
@@ -128,7 +117,6 @@ export interface FileRouteTypes {
     | '/ai-trip-planner'
     | '/checkout'
     | '/dashboard'
-    | '/flights'
     | '/login'
     | '/signup'
     | '/hotels/$id'
@@ -140,7 +128,6 @@ export interface RootRouteChildren {
   AiTripPlannerRoute: typeof AiTripPlannerRoute
   CheckoutRoute: typeof CheckoutRoute
   DashboardRoute: typeof DashboardRoute
-  FlightsRoute: typeof FlightsRoute
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
   HotelsIdRoute: typeof HotelsIdRoute
@@ -161,13 +148,6 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/flights': {
-      id: '/flights'
-      path: '/flights'
-      fullPath: '/flights'
-      preLoaderRoute: typeof FlightsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -220,7 +200,6 @@ const rootRouteChildren: RootRouteChildren = {
   AiTripPlannerRoute: AiTripPlannerRoute,
   CheckoutRoute: CheckoutRoute,
   DashboardRoute: DashboardRoute,
-  FlightsRoute: FlightsRoute,
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
   HotelsIdRoute: HotelsIdRoute,
@@ -229,13 +208,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
