@@ -11,12 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as AiTripPlannerRouteImport } from './routes/ai-trip-planner'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as HotelsIndexRouteImport } from './routes/hotels.index'
 import { Route as HotelsIdRouteImport } from './routes/hotels.$id'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -28,11 +29,6 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const CheckoutRoute = CheckoutRouteImport.update({
   id: '/checkout',
   path: '/checkout',
@@ -41,6 +37,10 @@ const CheckoutRoute = CheckoutRouteImport.update({
 const AiTripPlannerRoute = AiTripPlannerRouteImport.update({
   id: '/ai-trip-planner',
   path: '/ai-trip-planner',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -58,14 +58,19 @@ const HotelsIdRoute = HotelsIdRouteImport.update({
   path: '/hotels/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/ai-trip-planner': typeof AiTripPlannerRoute
   '/checkout': typeof CheckoutRoute
-  '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
   '/hotels/$id': typeof HotelsIdRoute
   '/hotels/': typeof HotelsIndexRoute
 }
@@ -73,20 +78,21 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/ai-trip-planner': typeof AiTripPlannerRoute
   '/checkout': typeof CheckoutRoute
-  '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
   '/hotels/$id': typeof HotelsIdRoute
   '/hotels': typeof HotelsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/ai-trip-planner': typeof AiTripPlannerRoute
   '/checkout': typeof CheckoutRoute
-  '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/hotels/$id': typeof HotelsIdRoute
   '/hotels/': typeof HotelsIndexRoute
 }
@@ -96,9 +102,9 @@ export interface FileRouteTypes {
     | '/'
     | '/ai-trip-planner'
     | '/checkout'
-    | '/dashboard'
     | '/login'
     | '/signup'
+    | '/dashboard'
     | '/hotels/$id'
     | '/hotels/'
   fileRoutesByTo: FileRoutesByTo
@@ -106,28 +112,29 @@ export interface FileRouteTypes {
     | '/'
     | '/ai-trip-planner'
     | '/checkout'
-    | '/dashboard'
     | '/login'
     | '/signup'
+    | '/dashboard'
     | '/hotels/$id'
     | '/hotels'
   id:
     | '__root__'
     | '/'
+    | '/_authenticated'
     | '/ai-trip-planner'
     | '/checkout'
-    | '/dashboard'
     | '/login'
     | '/signup'
+    | '/_authenticated/dashboard'
     | '/hotels/$id'
     | '/hotels/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AiTripPlannerRoute: typeof AiTripPlannerRoute
   CheckoutRoute: typeof CheckoutRoute
-  DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
   HotelsIdRoute: typeof HotelsIdRoute
@@ -150,13 +157,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/checkout': {
       id: '/checkout'
       path: '/checkout'
@@ -169,6 +169,13 @@ declare module '@tanstack/react-router' {
       path: '/ai-trip-planner'
       fullPath: '/ai-trip-planner'
       preLoaderRoute: typeof AiTripPlannerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -192,14 +199,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HotelsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AiTripPlannerRoute: AiTripPlannerRoute,
   CheckoutRoute: CheckoutRoute,
-  DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
   HotelsIdRoute: HotelsIdRoute,
