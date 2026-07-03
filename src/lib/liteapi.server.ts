@@ -135,10 +135,9 @@ export async function searchHotels(params: {
 }
 
 export async function getHotel(hotelId: string) {
-  const res = await call<{ data: LiteHotel[]; hotelIds?: string[]; total?: number }>("/data/hotels", {
-    query: { hotelIds: hotelId, limit: 1 },
+  return call<{ data: LiteHotel }>("/data/hotel", {
+    query: { hotelId },
   });
-  return { data: res.data?.[0] };
 }
 
 export type LiteRateHotel = {
