@@ -58,6 +58,7 @@ export const searchHotels = createServerFn({ method: "GET" })
     const fallbackDates = defaultDateRange();
     const checkin = data.checkIn || fallbackDates.checkin;
     const checkout = data.checkOut || fallbackDates.checkout;
+    const nights = nightsBetween(checkin, checkout);
 
     try {
       const res = await liteSearch({
@@ -89,6 +90,9 @@ export const searchHotels = createServerFn({ method: "GET" })
         source: "live",
         results: hotelList.map((h) => {
           const offer = offers.get(h.id);
+          // offer.amount is LiteAPI's total price for the whole stay — divide down
+          // to a nightly rate so this matches what the detail page shows per room.
+          const perNight = offer ? offer.amount / nights : 0;
           return {
             id: h.id,
             name: h.name,
@@ -100,7 +104,7 @@ export const searchHotels = createServerFn({ method: "GET" })
             reviews: h.reviewCount ?? 0,
             img: h.thumbnail || h.images?.[0] || "",
             amenities: [],
-            price: applyMarkup(offer?.amount ?? 0, offer?.currency ?? "USD", { country: h.country, promo: data.promo }),
+            price: applyMarkup(perNight, offer?.currency ?? "USD", { country: h.country, promo: data.promo }),
           };
         }),
       };
