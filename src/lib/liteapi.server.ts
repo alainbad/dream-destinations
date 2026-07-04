@@ -6,7 +6,7 @@
  * Sandbox base: https://api.sandbox.liteapi.travel/v3.0
  * Prod base:    https://api.liteapi.travel/v3.0
  *
- * Auth header: X-API-Key (public key for search, private key for prebook + book).
+ * Auth header: X-API-Key (LITEAPI_PRIVATE_KEY, used for every endpoint).
  *
  * PAYMENTS: LiteAPI acts as the merchant of record. Cards are tokenized in the
  * browser via the LiteAPI Pay JS SDK (https://pay.liteapi.travel/sdk/liteapi-pay.js)

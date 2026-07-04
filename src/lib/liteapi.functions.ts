@@ -51,7 +51,7 @@ export const searchHotels = createServerFn({ method: "GET" })
     const { hasLiteApiKeys, searchHotels: liteSearch, getRates, cheapestOfferByHotel } = await import("@/lib/liteapi.server");
 
     if (!hasLiteApiKeys()) {
-      console.warn("liteapi.searchHotels: LITEAPI_PUBLIC_KEY/LITEAPI_PRIVATE_KEY not set in this runtime — using mock results");
+      console.warn("liteapi.searchHotels: LITEAPI_PRIVATE_KEY not set in this runtime — using mock results");
       return mockResults(data.destination, data.promo);
     }
 
